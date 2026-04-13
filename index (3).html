@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fermionisme.org — system gateway</title>
+  <meta name="description" content="A digital philosophy and technology space. Navigate via terminal." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #050810;
+      --bg-deep:      #030509;
+      --bg-panel:     rgba(8, 13, 28, 0.82);
+      --bg-bar:       rgba(6, 10, 22, 0.95);
+      --bg-glass:     rgba(10, 18, 38, 0.6);
+      --blue:         #5bc8fa;
+      --blue-dim:     #3ba0cc;
+      --blue-mute:    #1e6e96;
+      --blue-faint:   rgba(91, 200, 250, 0.08);
+      --blue-glow:    rgba(91, 200, 250, 0.18);
+      --blue-border:  rgba(91, 200, 250, 0.14);
+      --blue-bright:  #9ae4ff;
+      --cyan:         #67e8f9;
+      --cyan-glow:    rgba(103, 232, 249, 0.2);
+      --yellow:       #fcd34d;
+      --red:          #f87171;
+      --white:        #cce8ff;
+      --grey:         #1e3a52;
+      --grey-text:    #3a6070;
+      --font:         'JetBrains Mono','Fira Code','Courier New',monospace;
+      --radius:       4px;
+      --radius-lg:    8px;
+      --sidebar-w:    230px;
+      --glow-blue:    0 0 20px rgba(91,200,250,0.12), 0 0 40px rgba(91,200,250,0.06);
+      --glow-cyan:    0 0 12px rgba(103,232,249,0.25);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--blue);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ─── AMBIENT BACKGROUND ──────────────────────────────────── */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* Deep nebula glow blobs */
+    #bg-canvas::before {
+      content: '';
+      position: absolute;
+      width: 700px; height: 700px;
+      top: -200px; left: -150px;
+      background: radial-gradient(ellipse, rgba(27,80,140,0.22) 0%, transparent 65%);
+      animation: driftA 18s ease-in-out infinite alternate;
+    }
+
+    #bg-canvas::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 500px;
+      bottom: -100px; right: -100px;
+      background: radial-gradient(ellipse, rgba(16,90,120,0.18) 0%, transparent 65%);
+      animation: driftB 22s ease-in-out infinite alternate;
+    }
+
+    @keyframes driftA {
+      0%   { transform: translate(0,0) scale(1); }
+      100% { transform: translate(60px, 40px) scale(1.12); }
+    }
+    @keyframes driftB {
+      0%   { transform: translate(0,0) scale(1); }
+      100% { transform: translate(-50px, -30px) scale(1.08); }
+    }
+
+    /* Subtle dot-grid overlay */
+    .dot-grid {
+      position: fixed; inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(91,200,250,0.055) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Fine scanlines */
+    .scanlines {
+      position: fixed; inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,6,20,0.055) 3px,
+        rgba(0,6,20,0.055) 4px
+      );
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed; inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(2,4,14,0.78) 100%);
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────────────────── */
+    #app {
+      position: relative;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      height: 100vh;
+      animation: appFadeIn 0.6s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes appFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── SIDEBAR ─────────────────────────────────────────────── */
+    #sidebar {
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border-right: 1px solid var(--blue-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Sidebar ambient glow edge */
+    #sidebar::after {
+      content: '';
+      position: absolute;
+      top: 0; right: -1px;
+      width: 1px; height: 100%;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(91,200,250,0.35) 25%,
+        rgba(103,232,249,0.5) 50%,
+        rgba(91,200,250,0.35) 75%,
+        transparent 100%
+      );
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid var(--blue-border);
+      background: var(--bg-bar);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Header top-accent line */
+    .sidebar-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--cyan) 40%, var(--blue) 70%, transparent 100%);
+      opacity: 0.7;
+    }
+
+    .sidebar-header .logo {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+
+    .sidebar-header .logo em {
+      color: var(--cyan);
+      font-style: normal;
+      text-shadow: var(--glow-cyan);
+    }
+
+    .sidebar-header .tagline {
+      font-size: 9px;
+      color: var(--blue-mute);
+      margin-top: 4px;
+      letter-spacing: 0.1em;
+      opacity: 0.8;
+    }
+
+    /* Corner HUD decoration */
+    .hud-corner {
+      position: absolute;
+      width: 12px; height: 12px;
+    }
+    .hud-corner.tl { top: 6px; left: 6px; border-top: 1.5px solid var(--cyan); border-left: 1.5px solid var(--cyan); opacity: 0.5; }
+    .hud-corner.br { bottom: 6px; right: 6px; border-bottom: 1.5px solid var(--cyan); border-right: 1.5px solid var(--cyan); opacity: 0.5; }
+
+    .sidebar-section { padding: 16px 16px 8px; }
+
+    .sidebar-label {
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blue-mute);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, var(--blue-border), transparent);
+    }
+
+    .cmd-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+
+    .cmd-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      border: 1px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cmd-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0;
+      background: var(--cyan);
+      border-radius: 0 1px 1px 0;
+      transition: width 0.15s ease;
+    }
+
+    .cmd-list li:hover {
+      background: var(--blue-faint);
+      border-color: rgba(91,200,250,0.2);
+      box-shadow: 0 0 12px rgba(91,200,250,0.07);
+    }
+
+    .cmd-list li:hover::before { width: 2px; }
+    .cmd-list li:active { background: rgba(10,30,55,0.8); }
+
+    .cmd-name { font-size: 12px; font-weight: 500; color: var(--blue); min-width: 64px; }
+    .cmd-desc { font-size: 9px; color: var(--grey-text); }
+
+    .cmd-list li:hover .cmd-name { color: var(--cyan); text-shadow: var(--glow-cyan); }
+
+    .sidebar-divider {
+      height: 1px;
+      margin: 8px 16px;
+      background: linear-gradient(90deg, transparent, var(--blue-border), transparent);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 14px 18px;
+      border-top: 1px solid var(--blue-border);
+      font-size: 9px;
+      color: var(--grey-text);
+      letter-spacing: 0.06em;
+      background: linear-gradient(to top, rgba(3,6,16,0.5), transparent);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--cyan);
+      margin-right: 6px;
+      box-shadow: 0 0 6px var(--cyan), 0 0 12px rgba(103,232,249,0.4);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 6px var(--cyan), 0 0 12px rgba(103,232,249,0.4); }
+      50%      { opacity: 0.25; box-shadow: none; }
+    }
+
+    .footer-meta { color: var(--blue-mute); margin-top: 5px; opacity: 0.7; }
+
+    /* ─── TERMINAL ───────────────────────────────────────────── */
+    #terminal-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: rgba(5,8,16,0.4);
+      backdrop-filter: blur(4px);
+      overflow: hidden;
+    }
+
+    .terminal-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--bg-bar);
+      border-bottom: 1px solid var(--blue-border);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    /* Titlebar top accent */
+    .terminal-titlebar::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--blue) 30%, var(--cyan) 60%, transparent 100%);
+      opacity: 0.5;
+    }
+
+    .titlebar-dots { display: flex; gap: 6px; align-items: center; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; transition: opacity 0.2s; }
+    .dot:hover { opacity: 0.8; }
+    .dot-r { background: #ff5f57; box-shadow: 0 0 6px rgba(255,95,87,0.4); }
+    .dot-y { background: #febc2e; box-shadow: 0 0 6px rgba(254,188,46,0.4); }
+    .dot-g { background: #28c840; box-shadow: 0 0 6px rgba(40,200,64,0.4); }
+
+    .titlebar-sep {
+      width: 1px; height: 16px;
+      background: var(--blue-border);
+      margin: 0 4px;
+    }
+
+    .titlebar-name {
+      font-size: 11px;
+      color: var(--blue-mute);
+      letter-spacing: 0.08em;
+    }
+
+    .titlebar-name span { color: var(--blue-dim); }
+
+    .titlebar-right {
+      margin-left: auto;
+      font-size: 9px;
+      color: var(--grey-text);
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .titlebar-indicator {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--blue-dim);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 28px 8px;
+      scroll-behavior: smooth;
+    }
+
+    #output::-webkit-scrollbar { width: 3px; }
+    #output::-webkit-scrollbar-track { background: transparent; }
+    #output::-webkit-scrollbar-thumb {
+      background: linear-gradient(to bottom, transparent, var(--blue-mute), transparent);
+      border-radius: 2px;
+    }
+
+    .line {
+      display: block;
+      min-height: 1.6em;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .line.system  { color: var(--blue-dim); }
+    .line.info    { color: var(--white); }
+    .line.prompt  { color: var(--blue); }
+    .line.output  { color: var(--blue-dim); }
+    .line.error   { color: var(--red); }
+    .line.success { color: var(--cyan); font-weight: 500; text-shadow: 0 0 8px rgba(103,232,249,0.3); }
+    .line.muted   { color: var(--grey-text); }
+    .line.blank   { color: transparent; user-select: none; }
+    .line.title   { color: var(--blue-bright); font-weight: 700; font-size: 15px; letter-spacing: 0.05em; text-shadow: 0 0 16px rgba(154,228,255,0.35); }
+    .line.divider { color: rgba(91,200,250,0.2); }
+
+    .typing-line::after {
+      content: '▋';
+      animation: blink 0.9s step-start infinite;
+      color: var(--cyan);
+    }
+
+    @keyframes blink {
+      0%,45% { opacity: 1; }
+      50%,100%{ opacity: 0; }
+    }
+
+    /* Neofetch */
+    .nf-user  { color: var(--cyan); font-weight: 700; text-shadow: var(--glow-cyan); }
+    .nf-sep   { color: var(--blue-mute); }
+    .nf-host  { color: var(--blue-bright); font-weight: 700; }
+    .nf-key   { color: var(--cyan); font-weight: 500; }
+    .nf-colon { color: var(--blue-mute); }
+    .nf-val   { color: var(--white); }
+
+    .swatch {
+      display: inline-block;
+      width: 16px; height: 13px;
+      border-radius: 2px;
+      vertical-align: middle;
+    }
+
+    /* ─── INPUT ROW ──────────────────────────────────────────── */
+    .input-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 28px 16px;
+      flex-shrink: 0;
+      border-top: 1px solid var(--blue-border);
+      background: rgba(5,8,20,0.5);
+      position: relative;
+      transition: box-shadow 0.2s;
+    }
+
+    .input-row:focus-within {
+      box-shadow: 0 -1px 0 rgba(103,232,249,0.25);
+      border-top-color: rgba(103,232,249,0.3);
+    }
+
+    /* Glow bar above input when focused */
+    .input-row::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(103,232,249,0.0), transparent);
+      transition: background 0.3s;
+    }
+
+    .input-row:focus-within::before {
+      background: linear-gradient(90deg, transparent, rgba(103,232,249,0.4), transparent);
+    }
+
+    .prompt-label {
+      font-size: 13px;
+      white-space: nowrap;
+      user-select: none;
+      margin-right: 1px;
+    }
+
+    #cmd-input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 13px;
+      flex: 1;
+      caret-color: var(--cyan);
+    }
+
+    #cmd-input::placeholder { color: rgba(58,96,112,0.6); }
+
+    /* ─── REDIRECT OVERLAY ───────────────────────────────────── */
+    #redirect-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(3,5,12,0.96);
+      backdrop-filter: blur(20px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    #redirect-overlay.active {
+      display: flex;
+      animation: ovlIn 0.3s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes ovlIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .redirect-ring {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1.5px solid var(--blue-border);
+      border-top-color: var(--cyan);
+      animation: spin 0.9s linear infinite;
+      box-shadow: 0 0 16px rgba(103,232,249,0.15);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .redirect-msg {
+      font-size: 13px;
+      color: var(--blue);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+    }
+
+    .redirect-sub {
+      color: var(--blue-mute);
+      font-size: 10px;
+      margin-top: -10px;
+      letter-spacing: 0.08em;
+    }
+
+    .redirect-bar {
+      width: 200px; height: 1px;
+      background: var(--blue-faint);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .redirect-progress {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue-dim), var(--cyan));
+      width: 0%;
+      animation: progress 0.9s linear forwards;
+      box-shadow: 0 0 8px var(--cyan);
+    }
+
+    @keyframes progress { to { width: 100%; } }
+
+    /* ─── MOBILE ─────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      html, body { overflow: hidden; }
+
+      #app {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      #terminal-container { flex: 1; min-height: 0; order: 1; }
+
+      #sidebar {
+        order: 2;
+        border-right: none;
+        border-top: 1px solid var(--blue-border);
+        flex-direction: row;
+        height: auto;
+        flex-shrink: 0;
+      }
+
+      #sidebar::after { display: none; }
+
+      .sidebar-header,
+      .sidebar-divider,
+      .sidebar-footer { display: none; }
+
+      .sidebar-section { flex: 1; padding: 7px 10px; }
+
+      .sidebar-label { font-size: 7px; margin-bottom: 5px; }
+
+      .cmd-list { flex-direction: row; flex-wrap: wrap; gap: 3px; }
+
+      .cmd-list li { padding: 4px 9px; flex-direction: column; align-items: flex-start; }
+      .cmd-desc { display: none; }
+      .cmd-name { font-size: 11px; min-width: unset; }
+
+      #output { padding: 10px 14px 4px; }
+      .input-row { padding: 7px 14px 10px; }
+      .titlebar-right { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Ambient background layers -->
+<div id="bg-canvas"></div>
+<div class="dot-grid"></div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="hud-corner tl"></div>
+      <div class="hud-corner br"></div>
+      <div class="logo">fermion<em>isme</em></div>
+      <div class="tagline">system gateway · v1.0</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Command Guide</div>
+      <ul class="cmd-list" id="cmd-list">
+        <li data-cmd="help">    <span class="cmd-name">help</span>     <span class="cmd-desc">list commands</span></li>
+        <li data-cmd="neofetch"><span class="cmd-name">neofetch</span> <span class="cmd-desc">system info</span></li>
+        <li data-cmd="enter">   <span class="cmd-name">enter</span>    <span class="cmd-desc">system menu</span></li>
+        <li data-cmd="studio">  <span class="cmd-name">studio</span>   <span class="cmd-desc">Aksata Studio</span></li>
+        <li data-cmd="blog">    <span class="cmd-name">blog</span>     <span class="cmd-desc">writing archive</span></li>
+        <li data-cmd="about">   <span class="cmd-name">about</span>    <span class="cmd-desc">about this space</span></li>
+        <li data-cmd="clear">   <span class="cmd-name">clear</span>    <span class="cmd-desc">reset terminal</span></li>
+      </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-footer">
+      <div><span class="status-dot"></span>system online</div>
+      <div class="footer-meta" style="margin-top:5px;">fermionisme.org</div>
+      <div class="footer-meta" style="margin-top:2px;">kernel: philosophy</div>
+    </div>
+  </aside>
+
+  <!-- TERMINAL -->
+  <div id="terminal-container">
+    <div class="terminal-titlebar">
+      <div class="titlebar-dots">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+      </div>
+      <div class="titlebar-sep"></div>
+      <div class="titlebar-name">fermion<span>@</span>system<span>:~</span></div>
+      <div class="titlebar-right">
+        <div class="titlebar-indicator"></div>
+        <span id="titlebar-clock">bash — 80×24</span>
+      </div>
+    </div>
+
+    <div id="output" role="log" aria-live="polite" aria-label="Terminal output"></div>
+
+    <div class="input-row">
+      <span class="prompt-label" aria-hidden="true">
+        <span style="color:var(--blue-dim)">fermion</span><span style="color:var(--blue-mute)">@</span><span style="color:var(--cyan);text-shadow:var(--glow-cyan)">system</span><span style="color:var(--blue-mute)">:</span><span style="color:var(--white)">~</span><span style="color:var(--blue)">$&nbsp;</span>
+      </span>
+      <input type="text" id="cmd-input"
+        autocomplete="off" autocorrect="off"
+        autocapitalize="off" spellcheck="false"
+        placeholder="type a command…"
+        aria-label="Terminal input" />
+    </div>
+  </div>
+</div>
+
+<!-- Redirect -->
+<div id="redirect-overlay">
+  <div class="redirect-ring"></div>
+  <div class="redirect-msg" id="redirect-msg">Redirecting…</div>
+  <div class="redirect-sub" id="redirect-sub"></div>
+  <div class="redirect-bar"><div class="redirect-progress" id="r-prog"></div></div>
+</div>
+
+<script>
+/* ================================================================
+   FERMIONISME — terminal gateway  (deep space edition)
+================================================================ */
+
+const OUT    = document.getElementById('output');
+const INPUT  = document.getElementById('cmd-input');
+const OVL    = document.getElementById('redirect-overlay');
+const R_MSG  = document.getElementById('redirect-msg');
+const R_SUB  = document.getElementById('redirect-sub');
+const R_PROG = document.getElementById('r-prog');
+
+/* ── history ──────────────────────────────────────────────────── */
+const hist = { stack: [], pos: -1 };
+
+/* ── DOM helpers ──────────────────────────────────────────────── */
+function mkLine(html, cls = '') {
+  const el = document.createElement('span');
+  el.className = 'line ' + cls;
+  el.innerHTML = html ?? '&nbsp;';
+  OUT.appendChild(el);
+  OUT.appendChild(document.createElement('br'));
+  return el;
+}
+
+const blank = () => mkLine('&nbsp;', 'blank');
+const scroll = () => { OUT.scrollTop = OUT.scrollHeight; };
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ── typewriter ───────────────────────────────────────────────── */
+function typeText(text, cls = 'system', delay = 0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const el = mkLine('', cls + ' typing-line');
+      const spd = Math.max(12, Math.min(30, Math.round(600 / text.length)));
+      let i = 0;
+      const tick = () => {
+        if (i < text.length) { el.textContent += text[i++]; scroll(); setTimeout(tick, spd); }
+        else { el.classList.remove('typing-line'); res(); }
+      };
+      tick();
+    }, delay);
+  });
+}
+
+/* ── prompt echo ──────────────────────────────────────────────── */
+function renderPrompt(raw) {
+  mkLine(
+    `<span style="color:var(--blue-dim)">fermion</span>` +
+    `<span style="color:var(--blue-mute)">@</span>` +
+    `<span style="color:var(--cyan);text-shadow:var(--glow-cyan)">system</span>` +
+    `<span style="color:var(--blue-mute)">:</span>` +
+    `<span style="color:var(--white)">~</span>` +
+    `<span style="color:var(--blue)">$</span> ` +
+    `<span style="color:var(--white)">${esc(raw)}</span>`,
+    'prompt'
+  );
+}
+
+/* ── redirect ─────────────────────────────────────────────────── */
+function goTo(url, label, sub) {
+  R_MSG.textContent = label;
+  R_SUB.textContent = sub;
+  OVL.classList.add('active');
+  R_PROG.style.animation = 'none';
+  R_PROG.offsetHeight;
+  R_PROG.style.animation = 'progress 0.9s linear forwards';
+  setTimeout(() => { window.location.href = url; }, 1050);
+}
+
+/* ── neofetch helpers ─────────────────────────────────────────── */
+
+function detectBrowser(ua) {
+  if (/Edg\//.test(ua))            return ['Microsoft Edge',  ua.match(/Edg\/([\d.]+)/)?.[1]];
+  if (/OPR\//.test(ua))            return ['Opera',           ua.match(/OPR\/([\d.]+)/)?.[1]];
+  if (/YaBrowser\//.test(ua))      return ['Yandex Browser',  ua.match(/YaBrowser\/([\d.]+)/)?.[1]];
+  if (/SamsungBrowser\//.test(ua)) return ['Samsung Browser', ua.match(/SamsungBrowser\/([\d.]+)/)?.[1]];
+  if (/Firefox\//.test(ua))        return ['Firefox',         ua.match(/Firefox\/([\d.]+)/)?.[1]];
+  if (/Chrome\//.test(ua))         return ['Chrome',          ua.match(/Chrome\/([\d.]+)/)?.[1]];
+  if (/Safari\//.test(ua))         return ['Safari',          ua.match(/Version\/([\d.]+)/)?.[1]];
+  return ['Unknown', '?'];
+}
+
+function detectOS(ua) {
+  if (/Windows NT 10|Windows NT 11/.test(ua)) return 'Windows 10 / 11';
+  if (/Windows NT 6\.3/.test(ua)) return 'Windows 8.1';
+  if (/Windows NT 6\.2/.test(ua)) return 'Windows 8';
+  if (/Windows NT 6\.1/.test(ua)) return 'Windows 7';
+  if (/Windows/.test(ua)) return 'Windows';
+  if (/Android/.test(ua))  return 'Android ' + (ua.match(/Android ([\d.]+)/)?.[1] ?? '');
+  if (/iPhone|iPad/.test(ua)) return 'iOS ' + (ua.match(/OS ([\d_]+)/)?.[1]?.replace(/_/g,'.') ?? '');
+  if (/Mac OS X/.test(ua)) return 'macOS ' + (ua.match(/Mac OS X ([\d_.]+)/)?.[1]?.replace(/_/g,'.') ?? '');
+  if (/CrOS/.test(ua)) return 'ChromeOS';
+  if (/Linux/.test(ua)) return 'Linux';
+  return 'Unknown';
+}
+
+function detectEngine(ua) {
+  if (/Gecko\/\d/.test(ua) && /Firefox/.test(ua)) return 'Gecko';
+  if (/AppleWebKit/.test(ua)) return /Chrome/.test(ua) ? 'Blink (Chromium)' : 'WebKit';
+  if (/Trident/.test(ua)) return 'Trident (IE)';
+  return 'Unknown';
+}
+
+function detectGPU() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return '—';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (!ext) return gl.getParameter(gl.RENDERER) || '—';
+    let r = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '—';
+    return r.length > 36 ? r.slice(0, 36) + '…' : r;
+  } catch(_) { return '—'; }
+}
+
+function detectNetwork() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!conn) return navigator.onLine ? 'online' : 'offline';
+  const parts = [];
+  if (conn.effectiveType) parts.push(conn.effectiveType.toUpperCase());
+  if (conn.downlink) parts.push(`↓${conn.downlink} Mbps`);
+  if (conn.rtt) parts.push(`RTT ${conn.rtt}ms`);
+  if (!parts.length) return navigator.onLine ? 'online' : 'offline';
+  return parts.join('  ');
+}
+
+function attachBattery(lineEl) {
+  if (!navigator.getBattery) return;
+  navigator.getBattery().then(bat => {
+    const pct = Math.round(bat.level * 100);
+    const status = bat.charging ? '⚡ charging' : (bat.discharging ? 'discharging' : '');
+    const blocks = Math.round(pct / 10);
+    const bar = '█'.repeat(blocks) + '░'.repeat(10 - blocks);
+    lineEl.innerHTML =
+      `<span class="nf-key">${'Battery'.padEnd(14)}</span>` +
+      `<span class="nf-colon">: </span>` +
+      `<span style="color:${pct > 20 ? 'var(--cyan)' : 'var(--red)'}">${bar}</span>` +
+      `<span class="nf-val">  ${pct}%  ${status}</span>`;
+  }).catch(()=>{});
+}
+
+/* ── ASCII logo ─────────────────────────────────────────────────── */
+const LOGO = [
+  ' ██████╗ ',
+  ' ██╔════╝',
+  ' █████╗  ',
+  ' ██╔══╝  ',
+  ' ██║     ',
+  ' ╚═╝     ',
+  '         ',
+  ' fermion ',
+  ' isme.org',
+];
+
+function pad(s, n) { return (s + ' '.repeat(n)).slice(0, n); }
+
+function nfLine(key, val, extra = '') {
+  return (
+    `<span class="nf-key">${pad(key, 14)}</span>` +
+    `<span class="nf-colon">: </span>` +
+    `<span class="nf-val">${val}</span>` +
+    (extra ? `  <span style="color:var(--grey-text)">${extra}</span>` : '')
+  );
+}
+
+/* ── Main neofetch render ─────────────────────────────────────── */
+function renderNeofetch() {
+  const ua   = navigator.userAgent;
+  const [bname, bver] = detectBrowser(ua);
+  const os   = detectOS(ua);
+  const eng  = detectEngine(ua);
+  const gpu  = detectGPU();
+  const lang = navigator.language || '—';
+  const tz   = Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone ?? '—';
+  const sw   = screen.width, sh = screen.height;
+  const vw   = window.innerWidth, vh = window.innerHeight;
+  const dpr  = (window.devicePixelRatio || 1).toFixed(1);
+  const depth= screen.colorDepth;
+  const cores= navigator.hardwareConcurrency ?? '—';
+  const mem  = navigator.deviceMemory ? `${navigator.deviceMemory} GB` : '—';
+  const net  = detectNetwork();
+  const touch= navigator.maxTouchPoints > 0 ? `yes (${navigator.maxTouchPoints} points)` : 'no';
+  const dev  = /Mobi|Android|iPhone|iPad/i.test(ua) ? 'Mobile' : 'Desktop';
+  const cookie = navigator.cookieEnabled ? 'enabled' : 'disabled';
+  const local  = (screen.width * window.devicePixelRatio) + '×' + (screen.height * window.devicePixelRatio);
+
+  blank();
+
+  mkLine(
+    `<span class="nf-user">fermion</span>` +
+    `<span class="nf-sep">@</span>` +
+    `<span class="nf-host">system</span>`,
+    'output'
+  );
+  mkLine('─'.repeat(24), 'divider');
+
+  const rows = [
+    nfLine('OS',          os),
+    nfLine('Device',      dev),
+    nfLine('Browser',     `${bname} ${bver}`.trim()),
+    nfLine('Engine',      eng),
+    nfLine('Screen',      `${sw}×${sh}`, `(physical: ${local})`),
+    nfLine('Viewport',    `${vw}×${vh}`),
+    nfLine('Pixel Ratio', `${dpr}x`),
+    nfLine('Color Depth', `${depth}-bit`),
+    nfLine('Language',    lang),
+    nfLine('Timezone',    tz),
+    nfLine('CPU Cores',   String(cores)),
+    nfLine('Memory',      mem),
+    nfLine('GPU',         gpu),
+    nfLine('Touch',       touch),
+    nfLine('Network',     net),
+    nfLine('Cookies',     cookie),
+  ];
+
+  const maxR = Math.max(LOGO.length, rows.length);
+
+  for (let i = 0; i < maxR; i++) {
+    const art = LOGO[i] ? `<span style="color:var(--blue-bright);text-shadow:0 0 8px rgba(154,228,255,0.3)">${LOGO[i]}</span>` : '         ';
+    const row = rows[i] ?? '';
+    mkLine(`${art}  ${row}`, 'output');
+  }
+
+  blank();
+  const batEl = mkLine(nfLine('Battery', '…detecting'), 'output');
+  attachBattery(batEl);
+
+  blank();
+  const palette = [
+    '#050810','#5bc8fa','#3ba0cc','#1e6e96',
+    '#67e8f9','#9ae4ff','#fcd34d','#f87171',
+  ];
+  const swatchHtml = palette.map(c =>
+    `<span class="swatch" style="background:${c};border:1px solid rgba(255,255,255,0.08)"></span>`
+  ).join('');
+  mkLine(
+    `<span style="display:inline-block;width:136px"></span>${swatchHtml}`,
+    'output'
+  );
+
+  blank();
+  scroll();
+}
+
+/* ── Commands ─────────────────────────────────────────────────── */
+const COMMANDS = {
+
+  help() {
+    blank();
+    mkLine('Available commands:', 'info');
+    blank();
+    [
+      ['neofetch', 'display browser & system info'],
+      ['enter',    'open system menu'],
+      ['studio',   'open Aksata Studio'],
+      ['blog',     'open writing archive'],
+      ['about',    'about Fermionisme'],
+      ['clear',    'clear terminal'],
+    ].forEach(([k, v]) => {
+      mkLine(
+        `  <span class="nf-key">${pad(k, 12)}</span>` +
+        `<span style="color:var(--blue-mute)">→  </span>` +
+        `<span style="color:var(--blue-dim)">${v}</span>`,
+        'output'
+      );
+    });
+    blank();
+  },
+
+  neofetch() { renderNeofetch(); },
+
+  enter() {
+    blank();
+    mkLine('Entering system…', 'system');
+    blank();
+    mkLine('Available destinations:', 'info');
+    blank();
+    [
+      ['studio', 'studio.fermionisme.org', 'creative & technology work'],
+      ['blog',   'blog.fermionisme.org',   'philosophy & writing archive'],
+      ['about',  '(this terminal)',         'about this space'],
+    ].forEach(([k, url, d]) => {
+      mkLine(
+        `  <span class="nf-key">${pad(k,10)}</span>` +
+        `<span style="color:var(--yellow)">${pad(url,32)}</span>` +
+        `<span style="color:var(--grey-text)">${d}</span>`,
+        'output'
+      );
+    });
+    blank();
+  },
+
+  studio() {
+    blank();
+    mkLine('Opening Aksata Studio…', 'system');
+    mkLine(`Redirecting → <span style="color:var(--yellow)">studio.fermionisme.org</span>`, 'output');
+    blank();
+    setTimeout(() => goTo('https://studio.fermionisme.org','Opening Aksata Studio','studio.fermionisme.org'), 300);
+  },
+
+  blog() {
+    blank();
+    mkLine('Opening writing archive…', 'system');
+    mkLine(`Redirecting → <span style="color:var(--yellow)">blog.fermionisme.org</span>`, 'output');
+    blank();
+    setTimeout(() => goTo('https://blog.fermionisme.org','Opening writing archive','blog.fermionisme.org'), 300);
+  },
+
+  about() {
+    blank();
+    mkLine('─'.repeat(38), 'divider');
+    mkLine('FERMIONISME', 'title');
+    mkLine('─'.repeat(38), 'divider');
+    blank();
+    mkLine('A digital philosophy and technology space,', 'info');
+    mkLine('created by <span style="color:var(--cyan);font-weight:500;text-shadow:var(--glow-cyan)">Aksa</span>.', 'info');
+    blank();
+    mkLine('Exploring:', 'info');
+    ['software','ideas','systems','experiments'].forEach(t =>
+      mkLine(`  <span style="color:var(--blue-mute)">·</span> <span style="color:var(--white)">${t}</span>`, 'output')
+    );
+    blank();
+    mkLine('The name draws from the Fermionic exclusion principle —', 'muted');
+    mkLine('no two fermions may occupy the same quantum state.', 'muted');
+    mkLine('A metaphor for individuality in a crowded universe.', 'muted');
+    blank();
+    mkLine('─'.repeat(38), 'divider');
+    blank();
+  },
+
+  clear() { OUT.innerHTML = ''; },
+  '?'() { COMMANDS.help(); },
+};
+
+/* ── Run ──────────────────────────────────────────────────────── */
+function run(raw) {
+  const cmd = raw.trim().toLowerCase();
+  if (!cmd) return;
+  if (hist.stack[0] !== cmd) hist.stack.unshift(cmd);
+  if (hist.stack.length > 50) hist.stack.pop();
+  hist.pos = -1;
+  renderPrompt(raw.trim());
+  if (COMMANDS[cmd]) { COMMANDS[cmd](); }
+  else {
+    blank();
+    mkLine(`command not found: <span style="color:var(--white)">${esc(cmd)}</span>`, 'error');
+    mkLine(`type <span style="color:var(--cyan)">help</span> to see available commands`, 'muted');
+    blank();
+  }
+  scroll();
+}
+
+/* ── Input ────────────────────────────────────────────────────── */
+INPUT.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const v = INPUT.value; INPUT.value = ''; run(v);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (hist.pos < hist.stack.length - 1) { hist.pos++; INPUT.value = hist.stack[hist.pos]; setTimeout(() => INPUT.setSelectionRange(9999,9999),0); }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (hist.pos > 0) { hist.pos--; INPUT.value = hist.stack[hist.pos]; } else { hist.pos = -1; INPUT.value = ''; }
+  } else if (e.ctrlKey && e.key === 'l') {
+    e.preventDefault(); COMMANDS.clear();
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    const p = INPUT.value.trim().toLowerCase();
+    const m = Object.keys(COMMANDS).find(k => k !== '?' && k.startsWith(p));
+    if (m) INPUT.value = m;
+  }
+});
+
+document.getElementById('cmd-list').addEventListener('click', e => {
+  const li = e.target.closest('[data-cmd]');
+  if (!li) return;
+  INPUT.value = ''; INPUT.focus(); run(li.dataset.cmd);
+});
+
+document.getElementById('terminal-container').addEventListener('click', () => INPUT.focus());
+
+/* ── Live clock ───────────────────────────────────────────────── */
+const clock = document.getElementById('titlebar-clock');
+(function tickClock() {
+  const n = new Date();
+  const d = n.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+  const t = n.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  clock.textContent = `${d}  ${t}`;
+  setTimeout(tickClock, 1000);
+})();
+
+/* ── Boot ─────────────────────────────────────────────────────── */
+async function boot() {
+  const lines = [
+    ['Fermionisme System v1.0',    'title',  0  ],
+    ['─'.repeat(38),               'divider',60 ],
+    ['Initializing interface…',    'system', 200],
+    ['Loading philosophy module…', 'system', 460],
+    ['Loading studio module…',     'system', 700],
+    ['Loading blog module…',       'system', 940],
+  ];
+
+  for (const [t, cls, d] of lines) await typeText(t, cls, d);
+
+  await new Promise(r => setTimeout(r, 300));
+  blank();
+  mkLine('<span style="color:var(--cyan);font-weight:500;text-shadow:var(--glow-cyan)">System ready.</span>', 'success');
+  blank();
+
+  renderNeofetch();
+
+  mkLine(
+    `Type <span style="color:var(--cyan)">help</span> for all commands  ·  ` +
+    `<span style="color:var(--blue-mute)">neofetch</span> to refresh system info`,
+    'muted'
+  );
+  blank();
+  scroll();
+  INPUT.focus();
+}
+
+boot();
+</script>
+</body>
+</html>
