@@ -336,7 +336,7 @@ function DoorCard({ door, index }) {
           ? `1px solid ${door.accent}55`
           : "1px solid var(--card-border)",
         background: hovered
-          ? `linear-gradient(135deg, rgba(var(--accent-rgb-raw, 200,169,110),0.06) 0%, var(--card-bg) 100%)`
+          ? `linear-gradient(135deg, rgba(var(--accent-rgb),0.06) 0%, var(--card-bg) 100%)`
           : "var(--card-bg)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
